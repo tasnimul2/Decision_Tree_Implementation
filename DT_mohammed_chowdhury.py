@@ -148,20 +148,34 @@ class DecisionTreeModel:
         right_idx = np.argwhere(X > thresh).flatten()
         return left_idx, right_idx
 
-    '''Implement the code here'''
+    '''Implement the code here
+    needed fix the code so it can switch between the two criterion: gini and entropy 
+    if criterion is entropy then run given code
+    if criterion is gini then use gini to find parent_loss and child loss'''
     def _information_gain(self, X, y, thresh):
-        # TODO: fix the code so it can switch between the two criterion: gini and entropy 
         
-        parent_loss = self._entropy(y)
-        left_idx, right_idx = self._create_split(X, thresh)
-        n, n_left, n_right = len(y), len(left_idx), len(right_idx)
+        if self.criterion == 'gini':
+            parent_loss = self._gini(y)
+            left_idx, right_idx = self._create_split(X, thresh)
+            n, n_left, n_right = len(y), len(left_idx), len(right_idx)
 
-        if n_left == 0 or n_right == 0: 
-            return 0
-        
-        child_loss = (n_left / n) * self._entropy(y[left_idx]) + (n_right / n) * self._entropy(y[right_idx])
-        # end TODO
-        return parent_loss - child_loss
+            if n_left == 0 or n_right == 0: 
+                return 0
+            
+            child_loss = (n_left / n) * self._gini(y[left_idx]) + (n_right / n) * self._gini(y[right_idx])
+            return parent_loss - child_loss
+        else :
+            parent_loss = self._entropy(y)
+            left_idx, right_idx = self._create_split(X, thresh)
+            n, n_left, n_right = len(y), len(left_idx), len(right_idx)
+
+            if n_left == 0 or n_right == 0: 
+                return 0
+            
+            child_loss = (n_left / n) * self._entropy(y[left_idx]) + (n_right / n) * self._entropy(y[right_idx])
+            return parent_loss - child_loss
+            
+    
        
     def _best_split(self, X, y, features):
         '''TODO: add comments here
