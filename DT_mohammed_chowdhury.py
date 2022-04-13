@@ -6,6 +6,7 @@ import seaborn as sns
 #https://towardsdatascience.com/implementing-a-decision-tree-from-scratch-f5358ff9c4bb
 
 from sklearn import datasets
+from sklearn.metrics import f1_score
 
 from sklearn.model_selection import train_test_split
 
@@ -232,18 +233,47 @@ def accuracy_score(y_true, y_pred):
     accuracy = np.sum(y_true == y_pred) / len(y_true)
     return accuracy
 
+'''The classfication_report method takes in the actual test results and our models predictions.
+It utilizes the confusion matrix toderive the precision, recall, f1-score and stores and 
+returns the data via a dictionary'''
 def classification_report(y_test, y_pred):
+    
     # calculate precision, recall, f1-score
-    # TODO:
-    result = 'To be implemented'
-    # end TODO
+    # returns a dictionary with the precision, recall, f1-score data.
+    matrix = confusion_matrix(y_test,y_pred)
+    TP = matrix[0][0]
+    FP = matrix[0][1]
+    FN = matrix[1][0]
+    TN = matrix[1][1]
+    
+    precision = TP/(FP + TP)
+    recall = TP/(FN + TP)
+    f1_score = (2 * precision * recall)/(precision + recall)
+    result = {"precision":precision,"recall":recall,"f1_score":f1_score}
     return(result)
 
+'''confusion_matrix() method takes in the actual test results and our models prediction.
+It uses this data to find out the TP,FP,FN,TN values and store it inside a 2D numpy array.
+returns 2D numpy array'''
 def confusion_matrix(y_test, y_pred):
     # return the 2x2 matrix
-    # TODO:
-    result = np.array([[0, 0], [0, 0]])
-    # end TODO
+    #[TP,FP],[FN,TN]
+    #y_test is pandas series
+    #y_pred is numpy.ndarray
+    
+    TP,FP,FN,TN = 0,0,0,0
+    y_test_arr = y_test.to_numpy()
+    for i in range(len(y_test)):
+        if y_test_arr[i] == 1 and y_pred[i] == 1:
+            TP = TP + 1
+        elif y_test_arr[i] == 0 and y_pred[i] == 1:
+            FP = FP + 1
+        elif y_test_arr[i] == 1 and y_pred[i] == 0:
+            FN = FN + 1
+        else:
+            TN = TN + 1
+    
+    result = np.array([[TP, FP], [FN, TN]])
     return(result)
 
 
@@ -260,31 +290,19 @@ def _test():
     X = df.drop(['diagnosis'], axis=1)
     y = df['diagnosis'].apply(lambda x: 0 if x == 'M' else 1)
     
-    #print out the data type of X and y to debug
-    print("X is : "+ str(type(X)) + " y is : " + str(type(y)))
-
+    
     
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=1
     )
 
     clf = DecisionTreeModel(max_depth=10)
-    # -------------------------------------------------
-    '''tesing gini'''
-    #print(f"gini of y is {clf._gini(y)}")
-    
-    '''testing entropy'''
-    #y_ent = df['diagnosis']
-    #print(f"the entropy is {clf._entropy(y)}")
-    #print(f"X_trains is {type(X_train)} and y_train is {type(y_train)}")
-    #print(X_train)
-    # -------------------------------------------------
     clf.fit(X_train, y_train)
 
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
-
-    print("Accuracy:", acc)
+    print(f"CLASSIFICATION REPORT: {classification_report(y_test,y_pred)}")
+    print("ACCURACY:", acc)
 
 if __name__ == "__main__":
     _test()
