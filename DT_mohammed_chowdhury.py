@@ -73,9 +73,11 @@ class DecisionTreeModel:
        
            
     def _fit(self, X, y):
+        '''Derives the root of the tree by calling the build_tree method. The root has children nodes that the predict method will utilize'''
         self.root = self._build_tree(X, y)
         
     def _predict(self, X):
+        '''For every row in the dataframe X, pass each row inside the traverse_tree method'''
         predictions = [self._traverse_tree(x, self.root) for x in X]
         return np.array(predictions)    
         
@@ -320,6 +322,8 @@ class RandomForestModel(object):
     def bootstrap_data(self,X,y):
         '''
         The sample() method selects "num_data_samples" rows randomly.  
+        Once randomly selected data is created and stored in the bootstrapped_X and bootstrapped_y variables 
+        return bootstrapped_X and bootstrapped_y
         '''
         num_data_samples = X.shape[0] #tells you number of rows in data frame
         bootstrapped_X = X.sample(num_data_samples)
@@ -329,6 +333,9 @@ class RandomForestModel(object):
     
 
 def accuracy_score(y_true, y_pred):
+    '''
+    checks to see if y_pred has any categorical values. If it does, it corrects it by mapping M and B to 0 and 1 respectively.
+    calculates the accuracy of the model '''
     does_have_catigorical_values_in_list = [type(x) == int for x in y_true]
     if(not any(does_have_catigorical_values_in_list)):
         y_true = y_true.apply(lambda x: 0 if x == 'M' else 1)
