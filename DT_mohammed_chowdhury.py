@@ -1,5 +1,7 @@
 
 
+from dataclasses import replace
+from ensurepip import bootstrap
 import pandas as pd
 import numpy as np
 import seaborn as sns
@@ -9,6 +11,7 @@ from sklearn import datasets
 from sklearn.metrics import f1_score
 
 from sklearn.model_selection import train_test_split
+from collections import Counter
 
 class Node:
     def __init__(self, feature=None, threshold=None, left=None, right=None, *, value=None):
@@ -31,21 +34,27 @@ class DecisionTreeModel:
         self.impurity_stopping_threshold = impurity_stopping_threshold
         self.root = None
 
-    '''Implement the code here, this is a overloaded method that will handle if a dataframe or a pd series 
-    is passed in. It converts it into a numpy array so the orginal _fit method functions properly.'''
+    
     def fit(self, X: pd.DataFrame, y: pd.Series):
+        '''Implement the code here, this is a overloaded method that will handle if a dataframe or a pd series 
+        is passed in. It converts it into a numpy array so the orginal _fit method functions properly.'''
         # call the _fit method
         new_X = X.to_numpy()
         new_y = y.to_numpy()
         self._fit(new_X,new_y)
-        print("Done fitting")
+        print("Done fitting Decision Tree")
 
-    '''Implement the code here'''
+    
     def predict(self, X: pd.DataFrame):
         ''' 
+        Implement the code here
         this is an overloaded method of the original _predict() 
         the purpose of this method is to handle the edge case of when a pd Dataframe is passed in instead of a 
         numpy array.
+        
+        X.to_numpy() creates a list of lists where each inner list represents a row in the original data frame, and each index in that list is a column.
+        Ex. [[col1,col2,col3],[col1,col2,col3],[col1,col2,col3]] is the dataframe as a numpy array 
+        where [col1,col2,col3] is a row in the dataframe and colN is a column in the df
         '''
         new_X = X.to_numpy()
         predictions = [self._traverse_tree(x, self.root) for x in new_X]
@@ -94,14 +103,15 @@ class DecisionTreeModel:
         right_child = self._build_tree(X[right_idx, :], y[right_idx], depth + 1)
         return Node(best_feat, best_thresh, left_child, right_child)
     
-    '''
-    Implement the code here
-    if y will either be a numpy array or pandas series. 
-    if it is a pandas series, then convert it into a np array (pd.values). Then do the computation
-    gini = 1 - (prob of yes)^2 - (prob of no)^2
-    gint = 1 - (yes/yes+no)^2 - (no/yes+no)^2
-    '''
+
     def _gini(self, y):
+        '''
+        Implement the code here
+        if y will either be a numpy array or pandas series. 
+        if it is a pandas series, then convert it into a np array (pd.values). Then do the computation
+        gini = 1 - (prob of yes)^2 - (prob of no)^2
+        gint = 1 - (yes/yes+no)^2 - (no/yes+no)^2
+        '''
         if isinstance(y,np.ndarray):
             y_as_arr = y
         else :
@@ -117,26 +127,25 @@ class DecisionTreeModel:
                 
         gini = 1 - ((num_yes/(num_yes+ num_no))**2) - ((num_no/(num_yes+ num_no))**2)
         return gini
-    
-    '''
-    Implement the code here
-    problem : 
-    the following won't work if y is not integer.
-    Need make it work for the cases where y is a categorical variable 
-    Solution:
-    first I needed to check if y was a np array. If it was, then I need to convert it into a pandas series
-    because .apply() method is only available in series not array.
-    Once we know y is a series, take all of the elements in y, and check to see if any element is not an int (ie. categorical)
-    if catigorical values are found, then i simply convert the M's to 0 and B's to 1. If we use a data set
-    that is not breast_cancer.csv, then this logic would break since the check for 'M' is hard coded. 
-    '''
+
     def _entropy(self, y):
-        
+        '''
+        Implement the code here
+        problem : 
+        the following won't work if y is not integer.
+        Need make it work for the cases where y is a categorical variable 
+        Solution:
+        first I needed to check if y was a np array. If it was, then I need to convert it into a pandas series
+        because .apply() method is only available in series not array.
+        Once we know y is a series, take all of the elements in y, and check to see if any element is not an int (ie. categorical)
+        if catigorical values are found, then i simply convert the M's to 0 and B's to 1. If we use a data set
+        that is not breast_cancer.csv, then this logic would break since the check for 'M' is hard coded. 
+        '''
         if isinstance(y,np.ndarray):
             y = pd.Series(y)
             
-        does_have_catigorical_values_list = [type(x) == int for x in y]
-        if(not any(does_have_catigorical_values_list)):
+        does_have_catigorical_values_in_list = [type(x) == int for x in y]
+        if(not any(does_have_catigorical_values_in_list)):
             y = y.apply(lambda x: 0 if x == 'M' else 1)
         # ^ end of my added code ^ 
         
@@ -144,16 +153,20 @@ class DecisionTreeModel:
         entropy = -np.sum([p * np.log2(p) for p in proportions if p > 0])
         return entropy
         
+        
     def _create_split(self, X, thresh):
         left_idx = np.argwhere(X <= thresh).flatten()
         right_idx = np.argwhere(X > thresh).flatten()
         return left_idx, right_idx
 
-    '''Implement the code here
-    needed fix the code so it can switch between the two criterion: gini and entropy 
-    if criterion is entropy then run given code
-    if criterion is gini then use gini to find parent_loss and child loss'''
+    
     def _information_gain(self, X, y, thresh):
+        '''
+        Implement the code here
+        needed fix the code so it can switch between the two criterion: gini and entropy 
+        if criterion is entropy then run given code
+        if criterion is gini then use gini to find parent_loss and child loss
+        '''
         
         if self.criterion == 'gini':
             parent_loss = self._gini(y)
@@ -180,10 +193,16 @@ class DecisionTreeModel:
        
     def _best_split(self, X, y, features):
         '''TODO: add comments here
-
+        1) the build_tree method passes in X train and y train values along with features (ie. a list of column numbers)
+        into this method. 
+        2) Then use a loop to iterate through the column index and use X[:,feat] syntax to denote "get all elements in column 'feat' "
+        this returns a list with all column data located in column number 'feat' and stores it inside X_feat variable. 
+        3)then use np.unique to get all the unique values in X_feat
+        4) iterate though the list of unique values inside the columns  and get a score from the information gain method, based on the gini impurity.
+        5) keep running step 4 until all unique values in the list are tested. As this happens, the highest score is stored for the current split.
+        6) return the feature and threshold value of the split with the highest score.
         '''
         split = {'score':- 1, 'feat': None, 'thresh': None}
-
         for feat in features:
             X_feat = X[:, feat]
             thresholds = np.unique(X_feat)
@@ -199,6 +218,13 @@ class DecisionTreeModel:
     
     def _traverse_tree(self, x, node):
         '''TODO: add some comments here
+        called upon by the predict method that passes in a list of integer value that represent a row in the dataframe. 
+        len(x) = n where n is number of columns in the dataframe.
+        
+        this method traverses throug the tree that was built by the fit() method. 
+        1) if we are at a lead node, return the value of the current node. 
+        2) check if the current nodes feature (ie. column in the dataframe) is less than the threshold. If it is, traverse to the left side of the tree 
+        3) otherwise go to the rightside of the tree. 
         '''
         if node.is_leaf():
             return node.value
@@ -212,20 +238,50 @@ class RandomForestModel(object):
 
     def __init__(self, n_estimators):
         # TODO:
-        pass
+        self.n_estimators = n_estimators
+        self.d_trees = []
         # end TODO
 
     def fit(self, X: pd.DataFrame, y: pd.Series):
-        # TODO:
-        pass
-        # end TODO
-        pass
-
-
+        for i in range(self.n_estimators):
+            currTree = DecisionTreeModel(max_depth=10)
+            X_train,y_train = self.bootstrap_data(X,y)
+            currTree.fit(X_train,y_train)
+            self.d_trees.append(currTree)
+        
+        print("Random Forrest Fitted")
+        
+    
     def predict(self, X: pd.DataFrame):
-        # TODO:
-        pass
-        # end TODO
+        '''
+        predictions_of_all_d_trees is a list of lists that holds the predictions for each decision tree.
+        each index is a list of predictions for a single tree
+        how swapaxes() works:
+        assume you have a list of lists [[1,2,3],[4,5,6],[7,8,9]]
+        swapaxes() will take the ith index of each sub list and put it in a single list. It will continue doing this 
+        until no more elements are left. 
+        result :
+        [[1,4,7],[2,5,8],[3,6,9]]
+        '''
+        predictions_of_all_d_trees = np.array([currTreeInList.predict(X) for currTreeInList in self.d_trees])
+        swapped_predictions_of_all_d_trees = np.swapaxes(predictions_of_all_d_trees,0,1)
+        
+        predictions = []
+        for tree_prediction in swapped_predictions_of_all_d_trees:
+            counter = Counter(tree_prediction)
+            most_common_value = counter.most_common(1)[0][0]
+            predictions.append(most_common_value)
+        
+        return predictions
+        
+    '''
+    The sample() method selects "num_data_samples" rows randomly.  
+    '''
+    def bootstrap_data(self,X,y):
+        num_data_samples = X.shape[0] #tells you number of rows in data frame
+        bootstrapped_X = X.sample(num_data_samples)
+        bootstrapped_y = y.sample(num_data_samples)
+        return bootstrapped_X,bootstrapped_y
 
     
 
@@ -249,7 +305,8 @@ def classification_report(y_test, y_pred):
     precision = TP/(FP + TP)
     recall = TP/(FN + TP)
     f1_score = (2 * precision * recall)/(precision + recall)
-    result = {"precision":precision,"recall":recall,"f1_score":f1_score}
+    scores = {"precision":precision,"recall":recall,"f1_score":f1_score}
+    result = pd.DataFrame([scores])
     return(result)
 
 '''confusion_matrix() method takes in the actual test results and our models prediction.
@@ -298,11 +355,18 @@ def _test():
 
     clf = DecisionTreeModel(max_depth=10)
     clf.fit(X_train, y_train)
-
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
-    print(f"CLASSIFICATION REPORT: {classification_report(y_test,y_pred)}")
+    print(f"CLASSIFICATION REPORT for Decision Tree: \n {classification_report(y_test,y_pred)}")
     print("ACCURACY:", acc)
+    
+    # ------------------------
+    rf = RandomForestModel(n_estimators=100)
+    rf.fit(X_train,y_train)
+    rf_y_pred = rf.predict(X_test)
+    acc_rf = accuracy_score(y_test,rf_y_pred)
+    print(f"CLASSIFICATION REPORT for Decision Tree: \n {classification_report(y_test,rf_y_pred)}")
+    print("ACCURACY:", acc_rf)
 
 if __name__ == "__main__":
     _test()
