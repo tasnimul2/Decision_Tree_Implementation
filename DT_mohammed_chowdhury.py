@@ -40,7 +40,18 @@ class DecisionTreeModel:
         is passed in. It converts it into a numpy array so the orginal _fit method functions properly.'''
         # call the _fit method
         new_X = X.to_numpy()
-        new_y = y.to_numpy()
+        
+        
+        
+        does_have_catigorical_values_in_list = [type(x) == int for x in y]
+        if(not any(does_have_catigorical_values_in_list)):
+            y = y.apply(lambda x: 0 if x == 'M' else 1)
+        
+        
+        if not isinstance(y,np.ndarray):
+            new_y = y.to_numpy()
+        else:
+            new_y = y
         self._fit(new_X,new_y)
         print("Done fitting Decision Tree")
 
@@ -112,11 +123,13 @@ class DecisionTreeModel:
         gini = 1 - (prob of yes)^2 - (prob of no)^2
         gint = 1 - (yes/yes+no)^2 - (no/yes+no)^2
         '''
-        if isinstance(y,np.ndarray):
+        
+        if isinstance(y,np.ndarray): 
             y_as_arr = y
         else :
             y_as_arr = y.values #y is a pd series, use pd.values to convert it to an np array
-
+        
+        
         num_yes = 0
         num_no = 0
         for i in y_as_arr:
@@ -286,6 +299,10 @@ class RandomForestModel(object):
     
 
 def accuracy_score(y_true, y_pred):
+    does_have_catigorical_values_in_list = [type(x) == int for x in y_true]
+    if(not any(does_have_catigorical_values_in_list)):
+        y_true = y_true.apply(lambda x: 0 if x == 'M' else 1)
+        
     accuracy = np.sum(y_true == y_pred) / len(y_true)
     return accuracy
 
@@ -301,7 +318,6 @@ def classification_report(y_test, y_pred):
     FP = matrix[0][1]
     FN = matrix[1][0]
     TN = matrix[1][1]
-    
     precision = TP/(FP + TP)
     recall = TP/(FN + TP)
     f1_score = (2 * precision * recall)/(precision + recall)
@@ -318,7 +334,12 @@ def confusion_matrix(y_test, y_pred):
     #y_test is pandas series
     #y_pred is numpy.ndarray
     
+    does_have_catigorical_values_in_list = [type(x) == int for x in y_test]
+    if(not any(does_have_catigorical_values_in_list)):
+        y_test = y_test.apply(lambda x: 0 if x == 'M' else 1)
+        
     TP,FP,FN,TN = 0,0,0,0
+    
     y_test_arr = y_test.to_numpy()
     for i in range(len(y_test)):
         if y_test_arr[i] == 1 and y_pred[i] == 1:
@@ -361,7 +382,7 @@ def _test():
     print("ACCURACY:", acc)
     
     # ------------------------
-    rf = RandomForestModel(n_estimators=100)
+    rf = RandomForestModel(n_estimators=3)
     rf.fit(X_train,y_train)
     rf_y_pred = rf.predict(X_test)
     acc_rf = accuracy_score(y_test,rf_y_pred)
